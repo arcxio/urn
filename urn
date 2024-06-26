@@ -1,0 +1,40 @@
+#!/bin/sh
+# Permission to use, copy, modify, and/or distribute this software is granted.
+# THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED.
+
+if [ -z "$1" ]; then
+	printf 'Usage: urn PATH [age options...]
+If PATH is a directory, makes an encrypted archive of it.
+If PATH is a file, decrypts & extracts directory from it.\n'
+	exit 0
+fi
+
+write_tar() {
+	if command -v pax >/dev/null 2>&1; then
+		pax -x ustar -w "./$1"
+	else
+		tar -H ustar -c "./$1"
+	fi
+}
+
+read_tar() {
+	if command -v pax >/dev/null 2>&1; then
+		pax -r
+	else
+		tar -x
+	fi
+}
+
+path=$(realpath -- "$1") || exit 1
+shift
+
+if [ -d "$path" ]; then
+	cd "$(dirname "$path")" || exit 1
+	name=$(basename "$path")
+	write_tar "$name" | age --encrypt "$@" -o "$OLDPWD/$name.tar.age"
+elif [ -f "$path" ]; then
+	age --decrypt "$@" "$path" | read_tar
+else
+	printf 'urn: %s\n' "$path: No such file or directory"
+	exit 1
+fi
