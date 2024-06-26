@@ -2,14 +2,14 @@
 # Permission to use, copy, modify, and/or distribute this software is granted.
 # THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED.
 
-if [ -z "$1" ]; then
+usage() {
 	printf 'Usage: urn PATH [age options...]
 If PATH is a directory, makes an encrypted archive of it.
 If PATH is a file, decrypts & extracts directory from it.\n'
-	exit 0
-fi
+	return 0
+}
 
-write_tar() {
+make_tar() {
 	if command -v pax >/dev/null 2>&1; then
 		pax -x ustar -w "./$1"
 	else
@@ -17,7 +17,7 @@ write_tar() {
 	fi
 }
 
-read_tar() {
+extract_tar() {
 	if command -v pax >/dev/null 2>&1; then
 		pax -r
 	else
@@ -25,16 +25,20 @@ read_tar() {
 	fi
 }
 
-path=$(realpath -- "$1") || exit 1
-shift
+urn() {
+	path=$(realpath -- "$1") || return 1
+	shift
 
-if [ -d "$path" ]; then
-	cd "$(dirname "$path")" || exit 1
-	name=$(basename "$path")
-	write_tar "$name" | age --encrypt "$@" -o "$OLDPWD/$name.tar.age"
-elif [ -f "$path" ]; then
-	age --decrypt "$@" "$path" | read_tar
-else
-	printf 'urn: %s\n' "$path: No such file or directory"
-	exit 1
-fi
+	if [ -d "$path" ]; then
+		cd "$(dirname "$path")" || return 1
+		name=$(basename "$path")
+		make_tar "$name" | age --encrypt "$@" -o "$OLDPWD/$name.tar.age"
+	elif [ -f "$path" ]; then
+		age --decrypt "$@" "$path" | extract_tar
+	else
+		printf 'urn: %s\n' "$path: No such file or directory"
+		return 1
+	fi
+}
+
+if [ "$1" ]; then urn "$@"; else usage; fi
