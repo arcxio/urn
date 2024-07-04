@@ -13,7 +13,7 @@ make_tar() {
 	if command -v pax >/dev/null 2>&1; then
 		pax -x ustar -w "./$1"
 	else
-		tar -H ustar -c "./$1"
+		tar c "./$1"
 	fi
 }
 
@@ -21,7 +21,7 @@ extract_tar() {
 	if command -v pax >/dev/null 2>&1; then
 		pax -r
 	else
-		tar -x
+		tar x
 	fi
 }
 
